@@ -38,13 +38,42 @@ This project enforces **read-only** access to ensure data safety when inspecting
 | `mongodb_logs` | Retrieve recent mongod log entries |
 | `get_server_config` | Get current server configuration (redacted) |
 
+### Tool Usage Examples
+
+#### explain
+Returns query execution plan statistics:
+
+```python
+# Format: ["method_name", {"arguments"}]
+explain(
+    database="testdb",
+    collection="products",
+    method=["find", {"filter": {"status": "active"}, "limit": 10}],
+    verbosity="executionStats"
+)
+```
+
+#### export_data
+Exports query results to a JSON file:
+
+```python
+# Format: ["target_name", {"arguments"}]
+export_data(
+    database="testdb",
+    collection="products",
+    exportTitle="active_products",
+    exportTarget=["find", {"filter": {"status": "active"}, "limit": 100}],
+    jsonExportFormat="relaxed"  # or "canonical"
+)
+```
+
 ## Configuration
 
 The server is configured via environment variables:
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `MDB_MCP_CONNECTION_STRING` | ✅ Yes | - | MongoDB connection string (mongodb:// or mongodb+srv://) |
+| `MDB_MCP_CONNECTION_STRING` | Yes | - | MongoDB connection string (mongodb:// or mongodb+srv://) |
 | `MDB_MCP_READ_ONLY` | No | `true` | Enable read-only mode (always true for this server) |
 | `MDB_MCP_INDEX_CHECK` | No | `false` | Reject queries that don't use an index |
 | `MDB_MCP_MAX_DOCUMENTS_PER_QUERY` | No | `100` | Maximum documents per query |
