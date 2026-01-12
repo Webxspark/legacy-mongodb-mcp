@@ -4,7 +4,7 @@
 Fix critical argument parsing bugs in explain and export_data tools
 
 ## Type
-🐛 Bug Fix
+Bug Fix
 
 ## Description
 
@@ -27,25 +27,25 @@ Updated the argument parsing logic to correctly handle the array format:
 ### Changes Made
 
 #### 1. Core Fixes (1 commit)
-- ✅ Fixed `explain()` to parse `method` as `[method_name, args_dict]`
-- ✅ Fixed `export_data()` to parse `exportTarget` as `[target_name, args_dict]`
-- ✅ Added type checking for array elements
+- Fixed `explain()` to parse `method` as `[method_name, args_dict]`
+- Fixed `export_data()` to parse `exportTarget` as `[target_name, args_dict]`
+- Added type checking for array elements
 
 #### 2. Input Validation (included in commit 1)
-- ✅ Validate `verbosity` parameter in `explain` (queryPlanner, executionStats, allPlansExecution)
-- ✅ Validate `jsonExportFormat` in `export_data` (relaxed, canonical)
-- ✅ Clear error messages for invalid parameters
+- Validate `verbosity` parameter in `explain` (queryPlanner, executionStats, allPlansExecution)
+- Validate `jsonExportFormat` in `export_data` (relaxed, canonical)
+- Clear error messages for invalid parameters
 
 #### 3. Tests (1 commit)
-- ✅ Unit tests for `explain` argument parsing (4 test cases)
-- ✅ Unit tests for `export_data` argument parsing (3 test cases)
-- ✅ Validation tests for all parameters
-- ✅ Error case handling tests
+- Unit tests for `explain` argument parsing (4 test cases)
+- Unit tests for `export_data` argument parsing (3 test cases)
+- Validation tests for all parameters
+- Error case handling tests
 
 #### 4. Documentation (3 commits)
-- ✅ Updated docstrings with explicit format specifications
-- ✅ Added concrete usage examples in README
-- ✅ Created CHANGELOG with upgrade notes
+- Updated docstrings with explicit format specifications
+- Added concrete usage examples in README
+- Created CHANGELOG with upgrade notes
 
 ### Testing
 All unit tests pass:
@@ -55,7 +55,7 @@ $ python tests/test_tool_fixes.py
 ✓ All export_data argument parsing tests passed
 ✓ All validation tests passed
 ✓ All error case tests passed
-✅ All tests passed!
+All tests passed!
 ```
 
 ### Impact
