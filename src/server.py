@@ -742,7 +742,9 @@ def explain(
     Args:
         database: Database name
         collection: Collection name
-        method: The method and its arguments to run (find, aggregate, or count)
+        method: The method and its arguments to run as a 2-element array:
+                [method_name, args_dict] where method_name is "find", "aggregate", or "count"
+                Example: ["find", {"filter": {"status": "active"}, "limit": 10}]
         verbosity: The verbosity of the explain plan (queryPlanner, executionStats, allPlansExecution)
     
     Returns:
@@ -849,7 +851,9 @@ def export_data(
         database: Database name
         collection: Collection name
         exportTitle: A short description to uniquely identify the export
-        exportTarget: The export target along with its arguments (find or aggregate)
+        exportTarget: The export target as a 2-element array:
+                      [target_name, args_dict] where target_name is "find" or "aggregate"
+                      Example: ["find", {"filter": {"price": {"$gt": 10}}, "limit": 100}]
         jsonExportFormat: The EJSON format (relaxed or canonical)
     
     Returns:
