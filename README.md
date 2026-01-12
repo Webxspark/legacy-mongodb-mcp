@@ -57,10 +57,40 @@ The server is configured via environment variables:
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.10+ (for local installation)
+- Docker (for containerized usage)
 - Access to a MongoDB instance (version 2.6 - 3.6 recommended)
 
-### Setup
+### Option 1: Docker (Recommended)
+
+Pull and run the pre-built Docker image:
+
+```bash
+docker run --rm -i \
+  --network=host \
+  -e MDB_MCP_CONNECTION_STRING="mongodb://user:password@localhost:27017/mydb?authSource=admin" \
+  -e MDB_MCP_READ_ONLY=true \
+  ghcr.io/webxspark/legacy-mongodb-mcp:latest
+```
+
+Or build locally:
+
+```bash
+# Clone the repository
+git clone https://github.com/Webxspark/legacy-mongodb-mcp.git
+cd legacy-mongodb-mcp
+
+# Build the image
+docker build -t legacy-mongodb-mcp .
+
+# Run the container
+docker run --rm -i \
+  --network=host \
+  -e MDB_MCP_CONNECTION_STRING="mongodb://user:password@localhost:27017" \
+  legacy-mongodb-mcp
+```
+
+### Option 2: Local Installation
 
 ```bash
 # Clone the repository
@@ -73,7 +103,32 @@ pip install -r requirements.txt
 
 ## Usage
 
-### With VS Code / Cursor
+### With VS Code / Cursor (Docker)
+
+Add to your `.vscode/mcp.json`:
+
+```json
+{
+    "servers": {
+        "legacy-mongodb": {
+            "command": "docker",
+            "args": [
+                "run", "--rm", "-i",
+                "--network=host",
+                "-e", "MDB_MCP_CONNECTION_STRING",
+                "-e", "MDB_MCP_READ_ONLY",
+                "ghcr.io/webxspark/legacy-mongodb-mcp:latest"
+            ],
+            "env": {
+                "MDB_MCP_CONNECTION_STRING": "mongodb://user:password@localhost:27017/mydb?authSource=admin",
+                "MDB_MCP_READ_ONLY": "true"
+            }
+        }
+    }
+}
+```
+
+### With VS Code / Cursor (Local Python)
 
 Add to your `.vscode/mcp.json`:
 
@@ -114,11 +169,19 @@ Or with `uv`:
 Test your configuration without starting the server:
 
 ```bash
+# Local
 export MDB_MCP_CONNECTION_STRING="mongodb://localhost:27017"
 python src/server.py --dry-run
+
+# Docker
+docker run --rm -i \
+  -e MDB_MCP_CONNECTION_STRING="mongodb://localhost:27017" \
+  ghcr.io/webxspark/legacy-mongodb-mcp:latest --dry-run
 ```
 
-### Testing with Docker
+### Testing with Docker Compose
+
+A Docker Compose configuration is provided for testing with MongoDB 3.6:
 
 A Docker Compose configuration is provided for testing with MongoDB 3.6:
 
@@ -136,10 +199,6 @@ Future development will expand functionality based on user needs:
 - [ ] Write operations (safeguarded, opt-in)
 - [ ] User/Role management
 - [ ] Backup utilities
-
-## License
-
-[MIT](LICENSE)
 
 ## License
 

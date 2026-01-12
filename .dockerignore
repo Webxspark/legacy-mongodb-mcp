@@ -1,11 +1,40 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+LICENSE
+
+# Docker (don't include in build context)
+docker-compose.yml
+
+# Test/Dev files
+exports/
+init-db/
+.env
+.env.example
+
+# Build artifacts
 node_modules/
 dist/
 build/
-.env
-*.log
-.DS_Store
+
+# Python cache
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+
+# IDE
+.vscode/
 .idea/
-.vscode
-.git
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
