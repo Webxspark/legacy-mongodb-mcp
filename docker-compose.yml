@@ -1,0 +1,18 @@
+services:
+  mongodb-test:
+    image: mongo:3.6
+    container_name: mongodb-3-6-test
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-secret_password}
+      - MONGO_INITDB_DATABASE=${MONGO_DB:-testdb}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+
+
+volumes:
+  mongodb_data:

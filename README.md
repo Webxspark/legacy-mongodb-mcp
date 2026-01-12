@@ -8,28 +8,139 @@ Modern MongoDB tools often drop support for older versions of the database. This
 
 ## Current Status
 
-**Focus:** Read-only operations.
+**Focus:** Strictly read-only operations.
 
-This project is currently in early development and focuses exclusively on **read-only** capabilities to ensure data safety while inspecting legacy systems.
+This project enforces **read-only** access to ensure data safety when inspecting legacy production systems.
 
-### Features
-- Connect to MongoDB versions < 4.0
-- List databases and collections
-- Query documents (find)
-- Read-only access enforcement
+### 🔒 Read-Only Enforcement
+
+- **No `connect` tool exposed** - Connection is established at startup via environment variable
+- **No write operations** - All tools are read-only by design
+- **Aggregation restrictions** - `$out` and `$merge` stages are blocked
+- **Index check mode** - Optional enforcement to reject queries without index usage
+- **Response limits** - Configurable limits on documents and bytes per query
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_databases` | List all databases in the MongoDB instance |
+| `list_collections` | List all collections in a database |
+| `find` | Run a find query against a collection |
+| `count` | Count documents in a collection with optional filter |
+| `aggregate` | Run an aggregation pipeline (read-only stages only) |
+| `collection_indexes` | Describe indexes for a collection |
+| `collection_schema` | Infer schema from sampled documents |
+| `collection_storage_size` | Get storage size statistics for a collection |
+| `db_stats` | Get database statistics |
+| `explain` | Get query execution plan for find/aggregate/count |
+| `export_data` | Export query/aggregation results to EJSON file |
+| `mongodb_logs` | Retrieve recent mongod log entries |
+| `get_server_config` | Get current server configuration (redacted) |
+
+## Configuration
+
+The server is configured via environment variables:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `MDB_MCP_CONNECTION_STRING` | ✅ Yes | - | MongoDB connection string (mongodb:// or mongodb+srv://) |
+| `MDB_MCP_READ_ONLY` | No | `true` | Enable read-only mode (always true for this server) |
+| `MDB_MCP_INDEX_CHECK` | No | `false` | Reject queries that don't use an index |
+| `MDB_MCP_MAX_DOCUMENTS_PER_QUERY` | No | `100` | Maximum documents per query |
+| `MDB_MCP_MAX_BYTES_PER_QUERY` | No | `16777216` | Maximum response bytes (16MB) |
+| `MDB_MCP_LOG_LEVEL` | No | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+
+> 🔒 **Security Recommendation**: Always use environment variables for the connection string. Never pass credentials as command-line arguments.
+
+## Installation
+
+### Prerequisites
+
+- Python 3.10+
+- Access to a MongoDB instance (version 2.6 - 3.6 recommended)
+
+### Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/Webxspark/legacy-mongodb-mcp.git
+cd legacy-mongodb-mcp
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+## Usage
+
+### With VS Code / Cursor
+
+Add to your `.vscode/mcp.json`:
+
+```json
+{
+    "servers": {
+        "legacy-mongodb": {
+            "command": "python",
+            "args": ["src/server.py"],
+            "env": {
+                "MDB_MCP_CONNECTION_STRING": "mongodb://user:password@localhost:27017",
+                "MDB_MCP_READ_ONLY": "true",
+                "MDB_MCP_INDEX_CHECK": "false"
+            }
+        }
+    }
+}
+```
+
+Or with `uv`:
+
+```json
+{
+    "servers": {
+        "legacy-mongodb": {
+            "command": "uv",
+            "args": ["run", "--with", "mcp", "--with", "pymongo", "python", "src/server.py"],
+            "env": {
+                "MDB_MCP_CONNECTION_STRING": "mongodb://user:password@localhost:27017"
+            }
+        }
+    }
+}
+```
+
+### Dry Run Mode
+
+Test your configuration without starting the server:
+
+```bash
+export MDB_MCP_CONNECTION_STRING="mongodb://localhost:27017"
+python src/server.py --dry-run
+```
+
+### Testing with Docker
+
+A Docker Compose configuration is provided for testing with MongoDB 3.6:
+
+```bash
+# Start the test MongoDB instance
+docker compose up -d
+
+# The connection string will be:
+# mongodb://admin:secret_password@localhost:27017
+```
 
 ## Roadmap
 
 Future development will expand functionality based on user needs:
-- [ ] Write operations (safeguarded)
-- [ ] Aggregation pipeline support
-- [ ] Index management
+- [ ] Write operations (safeguarded, opt-in)
 - [ ] User/Role management
+- [ ] Backup utilities
 
-## Installation
+## License
 
-(Coming soon)
+[MIT](LICENSE)
 
-## Usage
+## License
 
-(Coming soon)
+[MIT](LICENSE)
