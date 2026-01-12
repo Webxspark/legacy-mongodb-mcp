@@ -756,9 +756,19 @@ def explain(
         if not method or len(method) == 0:
             return json.dumps({"error": "Method is required"})
         
-        method_info = method[0]
-        method_name = method_info.get("name")
-        method_args = method_info.get("arguments", {})
+        # Parse method array: [method_name, args_dict]
+        method_name = method[0] if isinstance(method[0], str) else None
+        method_args = method[1] if len(method) > 1 and isinstance(method[1], dict) else {}
+        
+        if not method_name:
+            return json.dumps({"error": "Method name must be a string"})
+        
+        # Validate verbosity
+        valid_verbosity = ["queryPlanner", "executionStats", "allPlansExecution"]
+        if verbosity not in valid_verbosity:
+            return json.dumps({
+                "error": f"Invalid verbosity: {verbosity}. Must be one of {valid_verbosity}."
+            })
         
         explain_result = None
         
@@ -853,9 +863,18 @@ def export_data(
         if not exportTarget or len(exportTarget) == 0:
             return json.dumps({"error": "Export target is required"})
         
-        target_info = exportTarget[0]
-        target_name = target_info.get("name")
-        target_args = target_info.get("arguments", {})
+        # Parse exportTarget array: [target_name, args_dict]
+        target_name = exportTarget[0] if isinstance(exportTarget[0], str) else None
+        target_args = exportTarget[1] if len(exportTarget) > 1 and isinstance(exportTarget[1], dict) else {}
+        
+        if not target_name:
+            return json.dumps({"error": "Export target name must be a string"})
+        
+        # Validate JSON export format
+        if jsonExportFormat not in ["relaxed", "canonical"]:
+            return json.dumps({
+                "error": f"Invalid jsonExportFormat: {jsonExportFormat}. Must be 'relaxed' or 'canonical'."
+            })
         
         if target_name == "find":
             query_filter = target_args.get("filter", {})
