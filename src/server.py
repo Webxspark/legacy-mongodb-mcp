@@ -333,6 +333,118 @@ def enforce_index_check(database: str, collection: str, query_filter: dict) -> N
         )
 
 
+# Write operation stages that are forbidden in read-only mode
+WRITE_STAGES = {'$out', '$merge'}
+
+# Stages that can contain nested pipelines
+NESTED_PIPELINE_STAGES = {
+    '$lookup': 'pipeline',
+    '$facet': None,  # Special handling: values are arrays of pipelines
+    '$unionWith': 'pipeline',
+}
+
+
+def check_pipeline_for_writes(pipeline: list, path: str = "pipeline") -> tuple[bool, str]:
+    """
+    Recursively check an aggregation pipeline for write operations.
+    
+    Args:
+        pipeline: The aggregation pipeline to check
+        path: Current path for error reporting
+    
+    Returns:
+        (has_write_op, location) - True if write operation found, with location string
+    """
+    if not isinstance(pipeline, list):
+        return False, ""
+    
+    for idx, stage in enumerate(pipeline):
+        if not isinstance(stage, dict):
+            continue
+        
+        stage_path = f"{path}[{idx}]"
+        
+        # Check for top-level write stages
+        for write_stage in WRITE_STAGES:
+            if write_stage in stage:
+                return True, f"{stage_path}.{write_stage}"
+        
+        # Check nested pipelines in $lookup
+        if '$lookup' in stage:
+            lookup_config = stage['$lookup']
+            if isinstance(lookup_config, dict) and 'pipeline' in lookup_config:
+                nested_pipeline = lookup_config['pipeline']
+                has_write, location = check_pipeline_for_writes(
+                    nested_pipeline, f"{stage_path}.$lookup.pipeline"
+                )
+                if has_write:
+                    return True, location
+        
+        # Check nested pipelines in $facet
+        if '$facet' in stage:
+            facet_config = stage['$facet']
+            if isinstance(facet_config, dict):
+                for facet_name, facet_pipeline in facet_config.items():
+                    has_write, location = check_pipeline_for_writes(
+                        facet_pipeline, f"{stage_path}.$facet.{facet_name}"
+                    )
+                    if has_write:
+                        return True, location
+        
+        # Check nested pipelines in $unionWith
+        if '$unionWith' in stage:
+            union_config = stage['$unionWith']
+            if isinstance(union_config, dict) and 'pipeline' in union_config:
+                nested_pipeline = union_config['pipeline']
+                has_write, location = check_pipeline_for_writes(
+                    nested_pipeline, f"{stage_path}.$unionWith.pipeline"
+                )
+                if has_write:
+                    return True, location
+        
+        # Check for any other stage that might have a pipeline array
+        # This is a catch-all for future MongoDB features
+        for key, value in stage.items():
+            if isinstance(value, dict):
+                # Check for 'pipeline' key in any stage configuration
+                if 'pipeline' in value and isinstance(value['pipeline'], list):
+                    has_write, location = check_pipeline_for_writes(
+                        value['pipeline'], f"{stage_path}.{key}.pipeline"
+                    )
+                    if has_write:
+                        return True, location
+            elif isinstance(value, list):
+                # Check if this is a list of stages (like in $facet)
+                if value and isinstance(value[0], dict):
+                    # Could be a pipeline, check recursively
+                    for sub_key in value[0]:
+                        if sub_key.startswith('$'):
+                            has_write, location = check_pipeline_for_writes(
+                                value, f"{stage_path}.{key}"
+                            )
+                            if has_write:
+                                return True, location
+                            break
+    
+    return False, ""
+
+
+def enforce_read_only_pipeline(pipeline: list) -> None:
+    """
+    Enforce read-only mode by checking pipeline for any write operations.
+    Raises ValueError if write operations are found.
+    """
+    if not config.read_only:
+        return
+    
+    has_write, location = check_pipeline_for_writes(pipeline)
+    if has_write:
+        raise ValueError(
+            f"Write operations ($out, $merge) are not allowed in read-only mode. "
+            f"Found at: {location}"
+        )
+
+
 # ============================================================================
 # Initialize MCP Server
 # ============================================================================
@@ -549,11 +661,9 @@ def aggregate(
                     "error": "$vectorSearch is not supported in MongoDB versions < 4.0. "
                              "This feature requires MongoDB Atlas with vector search capability."
                 })
-            # Check for write operations in aggregation (read-only enforcement)
-            if '$out' in stage or '$merge' in stage:
-                return json.dumps({
-                    "error": f"Write operations ($out, $merge) are not allowed in read-only mode."
-                })
+        
+        # Recursively check for write operations (read-only enforcement)
+        enforce_read_only_pipeline(pipeline)
         
         # Add $limit if not present to prevent unbounded results
         has_limit = any('$limit' in stage for stage in pipeline)
@@ -572,6 +682,9 @@ def aggregate(
         
         return truncate_response(result, responseBytesLimit)
     
+    except ValueError as e:
+        # Read-only enforcement failures
+        return json.dumps({"error": str(e)})
     except Exception as e:
         logger.error(f"Error executing aggregate: {e}")
         return json.dumps({"error": str(e)})
@@ -792,6 +905,9 @@ def explain(
         elif method_name == "aggregate":
             pipeline = method_args.get("pipeline", [])
             
+            # Check for write operations in explain aggregation (read-only enforcement)
+            enforce_read_only_pipeline(pipeline)
+            
             explain_cmd = {
                 "aggregate": collection,
                 "pipeline": pipeline,
@@ -831,6 +947,9 @@ def explain(
         
         return result
     
+    except ValueError as e:
+        # Read-only enforcement failures
+        return json.dumps({"error": str(e)})
     except Exception as e:
         logger.error(f"Error executing explain: {e}")
         return json.dumps({"error": str(e)})
@@ -898,12 +1017,8 @@ def export_data(
         elif target_name == "aggregate":
             pipeline = target_args.get("pipeline", [])
             
-            # Block write operations in aggregation
-            for stage in pipeline:
-                if '$out' in stage or '$merge' in stage:
-                    return json.dumps({
-                        "error": "Write operations ($out, $merge) are not allowed in read-only mode."
-                    })
+            # Recursively check for write operations (read-only enforcement)
+            enforce_read_only_pipeline(pipeline)
             
             cursor = coll.aggregate(pipeline)
             documents = list(cursor)
@@ -944,6 +1059,9 @@ def export_data(
             "message": f"Exported {len(documents)} documents to {filepath}"
         })
     
+    except ValueError as e:
+        # Read-only enforcement failures
+        return json.dumps({"error": str(e)})
     except Exception as e:
         logger.error(f"Error exporting data: {e}")
         return json.dumps({"error": str(e)})
